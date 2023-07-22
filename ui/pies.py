@@ -2322,9 +2322,10 @@ class PieTransform(Menu):
         op.orientation = orientation
 
         # 2 - BOTTOM
-        op = pie.operator('machin3.set_transform_preset', text='Active')
+        op = pie.operator('machin3.set_transform_preset', text='创建法向')
         op.pivot = 'ACTIVE_ELEMENT'
         op.orientation = 'NORMAL' if context.mode in ['EDIT_MESH', 'EDIT_ARMATURE'] else 'LOCAL'
+        op.create_orientation = True
 
         # 8 - TOP
 
@@ -2387,6 +2388,10 @@ class PieTransform(Menu):
             row = column.row(align=True)
             row.prop(custom, "name", text="")
             row.operator("transform.delete_orientation", text="X", emboss=True)
+        
+        # mid:
+        row = column.row(align=True)
+        row.operator("machin3.delete_orientations")
 
     def draw_right_column(self, context, scene, active, layout):
         column = layout.column(align=True)
