@@ -1056,7 +1056,7 @@ class PieShading(Menu):
 
         row = column.split(factor=0.4, align=True)
         icon = 'wireframe_xray' if m3.show_edit_mesh_wire else 'wireframe'
-        row.operator("machin3.toggle_wireframe", text="Wireframe", icon_value=get_icon(icon), depress=context.mode=='OBJECT' and overlay.show_wireframes)
+        row.operator("machin3.toggle_wireframe", text="(W) Wireframe", icon_value=get_icon(icon), depress=context.mode=='OBJECT' and overlay.show_wireframes)
 
         r = row.row(align=True)
         if context.mode == "OBJECT":
@@ -1964,12 +1964,12 @@ class PieAlign(Menu):
         op.direction = "RIGHT"
 
         # 2 - BOTTOM
-        op = pie.operator("machin3.align_editmesh", text="Bottom")
+        op = pie.operator("machin3.align_editmesh", text="下")
         op.mode = "VIEW"
         op.direction = "BOTTOM"
 
         # 2 - TOP
-        op = pie.operator("machin3.align_editmesh", text="Top")
+        op = pie.operator("machin3.align_editmesh", text="上")
         op.mode = "VIEW"
         op.direction = "TOP"
 
@@ -1994,9 +1994,9 @@ class PieAlign(Menu):
 
         r = row.row(align=True)
         r.scale_y = 1.2
-        op = r.operator("machin3.center_editmesh", text="Horizontal")
+        op = r.operator("machin3.center_editmesh", text="水平")
         op.direction = "HORIZONTAL"
-        op = r.operator("machin3.center_editmesh", text="Vertical")
+        op = r.operator("machin3.center_editmesh", text="垂直")
         op.direction = "VERTICAL"
 
         column.separator()
@@ -2027,11 +2027,11 @@ class PieAlign(Menu):
 
         r = row.row(align=True)
         row.scale_y = 1.2
-        op = r.operator("machin3.align_editmesh", text="Horizontal")
+        op = r.operator("machin3.align_editmesh", text="水平")
         op.mode = "VIEW"
         op.type = "AVERAGE"
         op.direction = "HORIZONTAL"
-        op = r.operator("machin3.align_editmesh", text="Vertical")
+        op = r.operator("machin3.align_editmesh", text="垂直")
         op.mode = "VIEW"
         op.type = "AVERAGE"
         op.direction = "VERTICAL"
@@ -2043,11 +2043,11 @@ class PieAlign(Menu):
 
         r = row.row(align=True)
         r.scale_y = 1.2
-        op = r.operator("machin3.align_editmesh", text="Horizontal")
+        op = r.operator("machin3.align_editmesh", text="水平")
         op.mode = "VIEW"
         op.type = "ZERO"
         op.direction = "HORIZONTAL"
-        op = r.operator("machin3.align_editmesh", text="Vertical")
+        op = r.operator("machin3.align_editmesh", text="垂直")
         op.mode = "VIEW"
         op.type = "ZERO"
         op.direction = "VERTICAL"
@@ -2059,11 +2059,11 @@ class PieAlign(Menu):
 
         r = row.row(align=True)
         row.scale_y = 1.2
-        op = r.operator("machin3.align_editmesh", text="Horizontal")
+        op = r.operator("machin3.align_editmesh", text="水平")
         op.mode = "VIEW"
         op.type = "CURSOR"
         op.direction = "HORIZONTAL"
-        op = r.operator("machin3.align_editmesh", text="Vertical")
+        op = r.operator("machin3.align_editmesh", text="垂直")
         op.mode = "VIEW"
         op.type = "CURSOR"
         op.direction = "VERTICAL"
@@ -2148,12 +2148,12 @@ class PieUVAlign(Menu):
         op.type = "MAX"
 
         # 2 - BOTTOM
-        op = pie.operator("machin3.align_uv", text="Bottom")
+        op = pie.operator("machin3.align_uv", text="下")
         op.axis = "V"
         op.type = "MIN"
 
         # 8 - TOP
-        op = pie.operator("machin3.align_uv", text="Top")
+        op = pie.operator("machin3.align_uv", text="上")
         op.axis = "V"
         op.type = "MAX"
 
@@ -2180,10 +2180,10 @@ class PieUVAlign(Menu):
 
         r = row.row(align=True)
         row.scale_y = 1.2
-        op = r.operator("machin3.align_uv", text="Horizontal")
+        op = r.operator("machin3.align_uv", text="水平")
         op.type = "CURSOR"
         op.axis = "U"
-        op = r.operator("machin3.align_uv", text="Vertical")
+        op = r.operator("machin3.align_uv", text="垂直")
         op.type = "CURSOR"
         op.axis = "V"
 
