@@ -53,7 +53,7 @@ class DeleteOrientations(bpy.types.Operator):
             bpy.context.scene.transform_orientation_slots[0].type = ""
         except Exception as inst:
             # Extract custom orientations from error message
-            transforms_str = str(inst).split("in")[1]
+            transforms_str = str(inst).split("not found in")[1]
             transform_list = transforms_str.split("(")[1].split(")")[0].split(",")
 
             # Execlude first 6 "default" transform orientation

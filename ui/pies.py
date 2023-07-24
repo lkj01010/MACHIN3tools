@@ -2313,6 +2313,7 @@ class PieTransform(Menu):
         op = pie.operator('machin3.set_transform_preset', text='Local')
         op.pivot = 'MEDIAN_POINT'
         op.orientation = 'LOCAL'
+        op.create_orientation = False
 
         # 6 - RIGHT
 
