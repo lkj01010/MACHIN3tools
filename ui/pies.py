@@ -1170,8 +1170,8 @@ class PieShading(Menu):
             column.separator()
             row = column.split(factor=0.55, align=True)
             r = row.row(align=True)
-            r.operator("machin3.shade", text="Smooth", icon_value=get_icon('smooth')).mode = 'SMOOTH'
-            r.operator("machin3.shade", text="Flat", icon_value=get_icon('flat')).mode = 'FLAT'
+            r.operator("machin3.shade", text="(S) Smooth", icon_value=get_icon('smooth')).mode = 'SMOOTH'
+            r.operator("machin3.shade", text="(F) Flat", icon_value=get_icon('flat')).mode = 'FLAT'
 
             icon = "CHECKBOX_HLT" if mesh.use_auto_smooth else "CHECKBOX_DEHLT"
             row.operator("machin3.toggle_auto_smooth", text="AutoSmooth", icon=icon).angle = 0
@@ -2321,6 +2321,7 @@ class PieTransform(Menu):
         op = pie.operator('machin3.set_transform_preset', text=orientation.capitalize())
         op.pivot = 'MEDIAN_POINT'
         op.orientation = orientation
+        op.create_orientation = False
 
         # 2 - BOTTOM
         op = pie.operator('machin3.set_transform_preset', text='创建法向')
@@ -2356,12 +2357,14 @@ class PieTransform(Menu):
         op = pie.operator('machin3.set_transform_preset', text='Individual')
         op.pivot = 'INDIVIDUAL_ORIGINS'
         op.orientation = 'NORMAL' if context.mode in ['EDIT_MESH', 'EDIT_ARMATURE'] else 'LOCAL'
+        op.create_orientation = False
 
         # 3 - BOTTOM - RIGHT
         op = pie.operator('machin3.set_transform_preset', text='Cursor')
         # op.pivot = 'MEDIAN_POINT'
         op.pivot = 'CURSOR'
         op.orientation = 'CURSOR'
+        op.create_orientation = False
 
     def draw_left_column(self, scene, layout):
         layout.scale_x = 3

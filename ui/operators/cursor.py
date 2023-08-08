@@ -35,7 +35,7 @@ class CursorToOrigin(bpy.types.Operator):
             global cursor
 
             if cursor is not None:
-                bpy.ops.machin3.set_transform_preset(pivot=cursor[0], orientation=cursor[1])
+                bpy.ops.machin3.set_transform_preset(pivot=cursor[0], orientation=cursor[1], create_orientation=False)
                 cursor = None
 
         return {'FINISHED'}
@@ -112,7 +112,7 @@ class CursorToSelected(bpy.types.Operator):
         if pivot != 'CURSOR' and orientation != 'CURSOR':
             cursor = (context.scene.tool_settings.transform_pivot_point, context.scene.transform_orientation_slots[0].type)
 
-        bpy.ops.machin3.set_transform_preset(pivot='CURSOR', orientation='CURSOR')
+        bpy.ops.machin3.set_transform_preset(pivot='CURSOR', orientation='CURSOR', create_orientation=False)
 
     def cursor_to_editmesh(self, context, active, cmx, only_location, only_rotation):
         bm = bmesh.from_edit_mesh(active.data)
