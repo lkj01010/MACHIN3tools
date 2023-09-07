@@ -47,18 +47,23 @@ class DeleteOrientations(bpy.types.Operator):
     def execute(self, context):
         # bpy.context.scene.transform_orientation_slots[0].type = ""
 
-         # 1. 清除自定义的坐标系
+        # 1. 清除自定义的坐标系
         # Try to set transform orientation and catch error message
         try:
             bpy.context.scene.transform_orientation_slots[0].type = ""
         except Exception as inst:
             # Extract custom orientations from error message
             transforms_str = str(inst).split("not found in")[1]
-            transform_list = transforms_str.split("(")[1].split(")")[0].split(",")
+            transform_list = transforms_str.split(
+                "(")[1].split(")")[0].split(",")
 
-            # Execlude first 6 "default" transform orientation
-            for type in transform_list[6:]:
+            # Execlude first 7 "default" transform orientation
+            # default_orientations = ['GLOBAL', 'LOCAL', 'NORMAL', 'GIMBAL', 'VIEW', 'CURSOR', 'PARENT']
+
+            for type in transform_list[7:]:
+                # for type in transform_list:
                 type = type[2:len(type)-1]
+                # if type not in default_orientations:
                 bpy.context.scene.transform_orientation_slots[0].type = type
                 bpy.ops.transform.delete_orientation()
 
