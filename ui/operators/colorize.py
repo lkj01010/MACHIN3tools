@@ -14,7 +14,7 @@ class ColorizeMaterials(bpy.types.Operator):
     bl_description = "Set Material Viewport Colors from last Node in Material"
     bl_options = {'REGISTER', 'UNDO'}
 
-    lighten_amount: FloatProperty(name="Lighten", default=0.05, min=0, max=1)
+    lighten_amount: FloatProperty(name="Lighten", default=0.0, min=0, max=1)
 
     @classmethod
     def poll(cls, context):

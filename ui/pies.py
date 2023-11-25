@@ -1323,7 +1323,8 @@ class PieShading(Menu):
             if view.shading.color_type == 'SINGLE':
                 column.prop(view.shading, "single_color", text="")
 
-            elif view.shading.color_type == 'MATERIAL':
+            # elif view.shading.color_type == 'MATERIAL':
+            elif view.shading.color_type in ['MATERIAL', 'TEXTURE']:
                 column.operator("machin3.colorize_materials", text='Colorize Materials', icon='MATERIAL')
 
             elif view.shading.color_type == 'OBJECT':
