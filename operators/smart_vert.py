@@ -6,16 +6,14 @@ from mathutils import Vector
 from mathutils.geometry import intersect_point_line, intersect_line_line, intersect_line_plane
 from .. utils.graph import get_shortest_path
 from .. utils.ui import popup_message, init_status, finish_status
-from .. utils.draw import draw_line, draw_lines, draw_point, draw_tris, draw_vector
+from .. utils.draw import draw_lines, draw_point, draw_tris
 from .. utils.snap import Snap
 from .. utils.math import average_locations, get_center_between_verts, get_face_center
 from .. utils.selection import get_edges_vert_sequences, get_selection_islands
 from .. utils.registration import get_addon
-from .. utils.system import printd
 from .. utils.property import step_enum
 from .. items import smartvert_mode_items, smartvert_merge_type_items, smartvert_path_type_items, ctrl, alt
-
-from .. colors import yellow, white, green
+from .. colors import white
 
 
 hypercursor = None
@@ -144,7 +142,7 @@ class SmartVert(bpy.types.Operator):
         context.area.tag_redraw()
 
         # update mouse
-        self.mousepos = Vector((event.mouse_region_x, event.mouse_region_y))
+        self.mouse_pos = Vector((event.mouse_region_x, event.mouse_region_y))
 
         # set snapping
         self.is_snapping = event.ctrl
@@ -176,7 +174,7 @@ class SmartVert(bpy.types.Operator):
 
             # snap to edge or face
             elif event.ctrl:
-                self.S.get_hit(self.mousepos)
+                self.S.get_hit(self.mouse_pos)
 
                 # snap to geometry
                 if self.S.hit:
@@ -285,7 +283,6 @@ class SmartVert(bpy.types.Operator):
             # force gizmo update
             context.active_object.select_set(True)
 
-
     def invoke(self, context, event):
 
         # in object mode only allow slide/extend the passed in index from HyperCursor
@@ -293,7 +290,10 @@ class SmartVert(bpy.types.Operator):
             global hypercursor
 
             if hypercursor is None:
-                hypercursor = get_addon('HyperCursor')[0]
+                hypercursor, _, hc_version, _ = get_addon('HyperCursor')
+
+            elif hypercursor:
+                hc_version = get_addon('HyperCursor')[2]
 
             if self.slideoverride and hypercursor:
                 context.active_object.HC.show_geometry_gizmos = False
@@ -304,7 +304,7 @@ class SmartVert(bpy.types.Operator):
                 return {'CANCELLED'}
 
         # init mouse
-        self.mousepos = Vector((event.mouse_region_x, event.mouse_region_y))
+        self.mouse_pos = Vector((event.mouse_region_x, event.mouse_region_y))
 
         # SLIDE EXTEND
         if self.slideoverride:
@@ -360,18 +360,26 @@ class SmartVert(bpy.types.Operator):
                     for edge in selected:
                         edge_center = average_locations([self.mx @ v.co for v in edge.verts])
 
-                        mouse_3d = region_2d_to_location_3d(context.region, context.region_data, self.mousepos, edge_center)
+                        mouse_3d = region_2d_to_location_3d(context.region, context.region_data, self.mouse_pos, edge_center)
                         mouse_3d_local = self.mx.inverted_safe() @ mouse_3d
 
                         closest = min([(v, (v.co - mouse_3d_local).length) for v in edge.verts], key=lambda x: x[1])[0]
 
                         self.verts[closest] = {'co': closest.co.copy(), 'target': edge.other_vert(closest)}
 
+            # HyperCursor Object Mode invokation
+
             else:
                 # init mousepos and cursor warp the cursor too, as it's called from the HyperCursor Edit Edge pie menu
                 wm = context.window_manager
-                context.window.cursor_warp(int(wm.hyper_mousepos[0]), int(wm.hyper_mousepos[1]))
-                self.mousepos = Vector(wm.hyper_mousepos_region)
+
+                if hc_version >= (0, 9, 15):
+                    context.window.cursor_warp(int(wm.HC_mouse_pos[0]), int(wm.HC_mouse_pos[1]))
+                    self.mouse_pos = Vector(wm.HC_mouse_pos_region)
+
+                else:
+                    context.window.cursor_warp(int(wm.hyper_mousepos[0]), int(wm.hyper_mousepos[1]))
+                    self.mouse_pos = Vector(wm.hyper_mousepos_region)
 
                 self.bm = bmesh.new()
                 self.bm.from_mesh(self.active.data)
@@ -386,7 +394,7 @@ class SmartVert(bpy.types.Operator):
                 for edge in selected:
                     edge_center = average_locations([self.mx @ v.co for v in edge.verts])
 
-                    mouse_3d = region_2d_to_location_3d(context.region, context.region_data, self.mousepos, edge_center)
+                    mouse_3d = region_2d_to_location_3d(context.region, context.region_data, self.mouse_pos, edge_center)
                     mouse_3d_local = self.mx.inverted_safe() @ mouse_3d
 
                     closest = min([(v, (v.co - mouse_3d_local).length) for v in edge.verts], key=lambda x: x[1])[0]
@@ -508,6 +516,52 @@ class SmartVert(bpy.types.Operator):
         self.smart_vert(context)
         return {'FINISHED'}
 
+
+    # UTILS
+
+    def validate_history(self, active, bm, lazy=False):
+        verts = [v for v in bm.verts if v.select]
+        history = list(bm.select_history)
+
+        # just check for the prence of any element in the history
+        if lazy:
+            return history
+
+        if len(verts) == len(history):
+            return history
+        return None
+
+    def get_paths(self, bm, history, topo):
+        pair1 = history[0:2]
+        pair2 = history[2:4]
+        pair2.reverse()
+
+        path1 = get_shortest_path(bm, *pair1, topo=topo, select=True)
+        path2 = get_shortest_path(bm, *pair2, topo=topo, select=True)
+
+        # in some rare situations with TOPO pathtype, a verts can end up in both paths, which will cause an exception later one
+        is_any_in_both = any(v in path2 for v in path1)
+
+        # so check for that and get the paths again with the other path type
+        if is_any_in_both:
+            path1 = get_shortest_path(bm, *pair1, topo=not topo, select=True)
+            path2 = get_shortest_path(bm, *pair2, topo=not topo, select=True)
+
+            self.pathtype = step_enum(self.pathtype, smartvert_path_type_items, step=1, loop=True)
+
+        return path1, path2
+
+    def get_slide_vector_intersection(self, context):
+        view_origin = region_2d_to_origin_3d(context.region, context.region_data, self.mouse_pos)
+        view_dir = region_2d_to_vector_3d(context.region, context.region_data, self.mouse_pos)
+
+        i = intersect_line_line(view_origin, view_origin + view_dir, self.origin, self.target_avg)
+
+        return i[1]
+
+
+    # SMART
+
     def smart_vert(self, context):
         active = context.active_object
         topo = True if self.pathtype == "TOPO" else False
@@ -585,38 +639,6 @@ class SmartVert(bpy.types.Operator):
                     self.connect(active, bm, path1, path2)
                     return True
 
-    def validate_history(self, active, bm, lazy=False):
-        verts = [v for v in bm.verts if v.select]
-        history = list(bm.select_history)
-
-        # just check for the prence of any element in the history
-        if lazy:
-            return history
-
-        if len(verts) == len(history):
-            return history
-        return None
-
-    def get_paths(self, bm, history, topo):
-        pair1 = history[0:2]
-        pair2 = history[2:4]
-        pair2.reverse()
-
-        path1 = get_shortest_path(bm, *pair1, topo=topo, select=True)
-        path2 = get_shortest_path(bm, *pair2, topo=topo, select=True)
-
-        # in some rare situations with TOPO pathtype, a verts can end up in both paths, which will cause an exception later one
-        is_any_in_both = any(v in path2 for v in path1)
-
-        # so check for that and get the paths again with the other path type
-        if is_any_in_both:
-            path1 = get_shortest_path(bm, *pair1, topo=not topo, select=True)
-            path2 = get_shortest_path(bm, *pair2, topo=not topo, select=True)
-
-            self.pathtype = step_enum(self.pathtype, smartvert_path_type_items, step=1, loop=True)
-
-        return path1, path2
-
     def merge_paths(self, active, bm, path1, path2):
         targetmap = {}
 
@@ -675,7 +697,7 @@ class SmartVert(bpy.types.Operator):
             distances = []
 
             for v in verts:
-                mouse_3d = region_2d_to_location_3d(context.region, context.region_data, self.mousepos, mx @ v.co)
+                mouse_3d = region_2d_to_location_3d(context.region, context.region_data, self.mouse_pos, mx @ v.co)
                 mouse_3d_local = mx.inverted_safe() @ mouse_3d
 
                 if debug:
@@ -728,14 +750,6 @@ class SmartVert(bpy.types.Operator):
                 bmesh.ops.connect_vert_pair(bm, verts=verts)
 
         bmesh.update_edit_mesh(active.data)
-
-    def get_slide_vector_intersection(self, context):
-        view_origin = region_2d_to_origin_3d(context.region, context.region_data, self.mousepos)
-        view_dir = region_2d_to_vector_3d(context.region, context.region_data, self.mousepos)
-
-        i = intersect_line_line(view_origin, view_origin + view_dir, self.origin, self.target_avg)
-
-        return i[1]
 
     def slide(self, context):
         origin_dir = (self.target_avg - self.origin).normalized()

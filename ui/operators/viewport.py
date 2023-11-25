@@ -6,6 +6,8 @@ from ... utils.math import average_locations
 from ... items import view_axis_items
 
 
+# ALIGN VIEW
+
 class ViewAxis(bpy.types.Operator):
     bl_idname = "machin3.view_axis"
     bl_label = "View Axis"
@@ -33,7 +35,8 @@ class ViewAxis(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D'
+        if context.space_data:
+            return context.space_data.type == 'VIEW_3D'
 
     def invoke(self, context, event):
         m3 = context.scene.M3
@@ -136,23 +139,7 @@ class ViewAxis(bpy.types.Operator):
         return rot
 
 
-class MakeCamActive(bpy.types.Operator):
-    bl_idname = "machin3.make_cam_active"
-    bl_label = "Make Active"
-    bl_description = "Make selected Camera active."
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        active = context.active_object
-        if active:
-            return active.type == "CAMERA"
-
-    def execute(self, context):
-        context.scene.camera = context.active_object
-
-        return {'FINISHED'}
-
+# SMART CAM
 
 class SmartViewCam(bpy.types.Operator):
     bl_idname = "machin3.smart_view_cam"
@@ -162,7 +149,8 @@ class SmartViewCam(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D'
+        if context.mode == 'OBJECT' and context.space_data:
+            return context.space_data.type == 'VIEW_3D'
 
     def invoke(self, context, event):
         cams = [obj for obj in context.scene.objects if obj.type == "CAMERA"]
@@ -193,6 +181,24 @@ class SmartViewCam(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class MakeCamActive(bpy.types.Operator):
+    bl_idname = "machin3.make_cam_active"
+    bl_label = "Make Active"
+    bl_description = "Make selected Camera active."
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        active = context.active_object
+        if active:
+            return active.type == "CAMERA"
+
+    def execute(self, context):
+        context.scene.camera = context.active_object
+
+        return {'FINISHED'}
+
+
 class NextCam(bpy.types.Operator):
     bl_idname = "machin3.next_cam"
     bl_label = "MACHIN3: Next Cam"
@@ -202,7 +208,8 @@ class NextCam(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D' and context.space_data.region_3d.view_perspective == 'CAMERA'
+        if context.space_data:
+            return context.space_data.type == 'VIEW_3D' and context.space_data.region_3d.view_perspective == 'CAMERA'
 
     def execute(self, context):
         cams = sorted([obj for obj in context.scene.objects if obj.type == "CAMERA"], key=lambda x: x.name)
@@ -326,7 +333,8 @@ class ResetViewport(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D'
+        if context.space_data:
+            return context.space_data.type == 'VIEW_3D'
 
     def execute(self, context):
         context.space_data.region_3d.is_orthographic_side_view = False

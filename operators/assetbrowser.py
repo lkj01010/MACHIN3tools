@@ -4,10 +4,9 @@ import os
 from mathutils import Vector
 from .. utils.registration import get_addon, get_prefs, get_path
 from .. utils.ui import popup_message
-from .. utils.asset import update_asset_catalogs
+from .. utils.asset import get_asset_library_reference, set_asset_library_reference, update_asset_catalogs
 from .. utils.object import parent
 from .. utils.math import average_locations
-from .. utils.draw import draw_point
 from .. items import create_assembly_asset_empty_location_items, create_assembly_asset_empty_collection_items
 
 import time
@@ -117,7 +116,6 @@ class CreateAssemblyAsset(bpy.types.Operator):
         r.prop(self, 'toggle_overlays', text="Toggle Overlays", toggle=True)
         r.prop(self, 'thumbnail_lens', text='Lens')
 
-    # """
     def invoke(self, context, event):
         global decalmachine, meshmachine
 
@@ -131,7 +129,6 @@ class CreateAssemblyAsset(bpy.types.Operator):
 
         # return {'FINISHED'}
         return context.window_manager.invoke_props_dialog(self)
-    # """
 
     def execute(self, context):
         global decalmachine, meshmachine
@@ -170,9 +167,32 @@ class CreateAssemblyAsset(bpy.types.Operator):
                 thumbpath = os.path.join(get_path(), 'resources', 'thumb.png')
                 self.render_viewport(context, thumbpath)
 
-                if os.path.exists(thumbpath):
-                    bpy.ops.ed.lib_id_load_custom_preview({'id': instance}, filepath=thumbpath)
-                    os.unlink(thumbpath)
+                # with context.temp_override(id=instance):
+                #     bpy.ops.ed.lib_id_generate_preview(filepath=thumbpath)
+
+                # NOTE: this just doesn'twork in 4.0 beta, complains about wrong context
+                # ####: I tried everything, passing in assetbrowser area, space_data, region and region_data, incl an entire context object with these four replaced
+                # ####: I tried invoking a dedicated op like in HyperCursor with the assetbrowser area, non of it would work
+                # ####: the second could have worked, but I then couldn't set the new asset as the active one
+                # ####: I could do that just fine for all existing assets though using assetbrowser space_data.activate_asset_from_id() or whatever it is called
+                # ####: but when creating said asset in the same go it wouldn't work
+                # ####: so I'm no diectly writing to the preview buffer, which takes a couple of seconds and a lot of CPU, but works without any stupid context overrides
+
+                # NOTE: it is now instant thx to the [:] syntax, wow!
+                # ####: see https://blender.stackexchange.com/a/3678/33919
+
+                # load the rendered image, as th render result's pixels (and size) can't be accessed
+                thumb = bpy.data.images.load(filepath=thumbpath)
+
+                # create the preview from the img object's pixels
+                instance.preview_ensure()
+                instance.preview.image_size = thumb.size
+                instance.preview.image_pixels_float[:] = thumb.pixels  # CodeManX is a legend
+
+                # remove the loade and rendered thumb, and remove the file from disk too
+                bpy.data.images.remove(thumb)
+                bpy.data.images.remove(bpy.data.images['Render Result'])
+                os.unlink(thumbpath)
 
             return {'FINISHED'}
 
@@ -180,6 +200,9 @@ class CreateAssemblyAsset(bpy.types.Operator):
             popup_message("The chosen asset name can't be empty", title="Illegal Name")
 
             return {'CANCELLED'}
+
+
+    # UTILS
 
     def get_assembly_asset_objects(self, context):
         '''
@@ -352,6 +375,7 @@ class CreateAssemblyAsset(bpy.types.Operator):
 
         # if an asset browser is present on the current workspace, ensure it's set to LOCAL
         ws = context.workspace
+
         self.switch_asset_browser_to_LOCAL(ws)
 
     def switch_asset_browser_to_LOCAL(self, workspace):
@@ -360,8 +384,8 @@ class CreateAssemblyAsset(bpy.types.Operator):
                 if area.type == 'FILE_BROWSER' and area.ui_type == 'ASSETS':
                     for space in area.spaces:
                         if space.type == 'FILE_BROWSER':
-                            if space.params.asset_library_ref != 'LOCAL':
-                                space.params.asset_library_ref = 'LOCAL'
+                            if get_asset_library_reference(space.params) != 'LOCAL':
+                                set_asset_library_reference(space.params, 'LOCAL')
 
                             # ensure the tool props are shown too, so you can set the thumbnail
                             space.show_region_tool_props = True
@@ -378,8 +402,8 @@ class CreateAssemblyAsset(bpy.types.Operator):
         show_overlays = context.space_data.overlay.show_overlays
 
         # adjust for thumbnail rendering
-        context.scene.render.resolution_x = 500
-        context.scene.render.resolution_y = 500
+        context.scene.render.resolution_x = 128
+        context.scene.render.resolution_y = 128
         context.scene.render.image_settings.file_format = 'JPEG'
 
         context.space_data.lens = self.thumbnail_lens
@@ -621,13 +645,17 @@ class CollectAssets(bpy.types.Operator):
 
                     if os.path.exists(jpgpath):
                         print(" using existing .jpg thumbnail")
-                        bpy.ops.ed.lib_id_load_custom_preview({'id': mat}, filepath=jpgpath)
+                        with context.temp_override(id=mat):
+                            bpy.ops.ed.lib_id_load_custom_preview(filepath=jpgpath)
                     elif os.path.exists(pngpath):
                         print(" using existing .png thumbnail")
-                        bpy.ops.ed.lib_id_load_custom_preview({'id': mat}, filepath=pngpath)
+                        with context.temp_override(id=mat):
+                            bpy.ops.ed.lib_id_load_custom_preview(filepath=pngpath)
                     else:
                         print(" generating new preview")
-                        bpy.ops.ed.lib_id_generate_preview({'id': mat})
+                        with context.temp_override(id=mat):
+                            bpy.ops.ed.lib_id_generate_preview()
+
                         time.sleep(0.1)
 
         return {'FINISHED'}

@@ -646,7 +646,8 @@ class ToggleChildren(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'OUTLINER'
+        if context.area:
+            return context.area.type == 'OUTLINER'
 
     def execute(self, context):
         area = context.area
@@ -665,7 +666,8 @@ class ToggleGroupMode(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'OUTLINER'
+        if context.area:
+            return context.area.type == 'OUTLINER'
 
     def execute(self, context):
         area = context.area
@@ -701,7 +703,8 @@ class CollapseOutliner(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'OUTLINER'
+        if context.area:
+            return context.area.type == 'OUTLINER'
 
     def execute(self, context):
 

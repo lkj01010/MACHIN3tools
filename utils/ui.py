@@ -19,7 +19,108 @@ def get_icon(name):
     return icons[name].icon_id
 
 
-# CURSOR
+# MOUSE
+
+def get_mouse_pos(self, context, event, hud=True, hud_offset=(20, 20)):
+    '''
+    get and set the current mouse position (region space)
+    optionally
+        create an offset vector too, based on the wm.HC_mouse_pos_region prop, this would be used in an operator's invoke() only
+        set HUD_x and HUD_y props for HUD drawing
+    '''
+
+    self.mouse_pos = Vector((event.mouse_region_x, event.mouse_region_y))
+
+    if hud:
+        scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
+
+        self.HUD_x = self.mouse_pos.x + hud_offset[0] * scale
+        self.HUD_y = self.mouse_pos.y + hud_offset[1] * scale
+
+
+def wrap_mouse(self, context, x=False, y=False):
+    '''
+    wrap mouse to other side of the region
+    works on self.mouse_pos which are expected to exist, and which are in region space of course
+    '''
+
+    width = context.region.width
+    height = context.region.height
+
+    # copy the curretn mouse location
+    mouse = self.mouse_pos.copy()
+
+    # check for x wrapping
+    if x:
+        if mouse.x <= 0:
+            mouse.x = width - 10
+
+        elif mouse.x >= width - 1:  # the -1 is required for full screen, where the max region width is never passed
+            mouse.x = 10
+
+    # check for y wrapping, as long as x wasn't wrapped already
+    if y and mouse == self.mouse_pos:
+        if mouse.y <= 0:
+            mouse.y = height - 10
+
+        elif mouse.y >= height - 1:
+            mouse.y = 10
+
+    # actually warp the mouse ot the other side now, IF mouse differs from self.mouse_pos now
+    if mouse != self.mouse_pos:
+        # print()
+        # print("warping --- woooosh")
+        warp_mouse(self, context, mouse)
+
+
+def warp_mouse(self, context, co2d=Vector(), region=True, hud_offset=(20, 20)):
+    '''
+    warp mouse to passed in co2d
+       which by default is expected to be in region space
+       and so will be converted to window space accordingly, which is what context.window.cursior_warp() expects
+    '''
+
+    coords = get_window_space_co2d(context, co2d) if region else co2d
+
+    # engage!
+    context.window.cursor_warp(int(coords.x), int(coords.y))
+
+    # set mouse_pos prop on operator
+    self.mouse_pos = co2d if region else get_region_space_co2d(context, co2d)
+
+    # self.last_mouse too, if present
+    if getattr(self, 'last_mouse', None):
+        self.last_mouse = self.mouse_pos
+
+    # HUD coords too, if present
+    if getattr(self, 'HUD_x', None):
+        scale = context.preferences.system.ui_scale * get_prefs().modal_hud_scale
+
+        self.HUD_x = self.mouse_pos.x + hud_offset[0] * scale
+        self.HUD_y = self.mouse_pos.y + hud_offset[1] * scale
+
+
+def get_window_space_co2d(context, co2d=Vector()):
+    '''
+    using the region x and y, convert the passed in (mouse) coords from region into absolute (blender-window) space
+    '''
+
+    return co2d + Vector((context.region.x, context.region.y))
+
+
+def get_region_space_co2d(context, co2d=Vector()):
+    '''
+    using the region x and y, convert the passed in (mouse) coords from absolute (blender-window) to region space
+    '''
+
+    return Vector((context.region.x, context.region.y)) - co2d
+
+
+
+
+
+
+# CURSOR - TODO: remove
 
 def init_cursor(self, event, offsetx=0, offsety=20):
     self.last_mouse_x = event.mouse_x
@@ -107,8 +208,17 @@ def get_zoom_factor(context, depth_location, scale=10, ignore_obj_scale=False):
     center = Vector((context.region.width / 2, context.region.height / 2))
     offset = center + Vector((scale, 0))
 
-    center_3d = region_2d_to_location_3d(context.region, context.region_data, center, depth_location)
-    offset_3d = region_2d_to_location_3d(context.region, context.region_data, offset, depth_location)
+    # NOTE: this can through an exception in some rare cases
+    #   File "/opt/blender-3.6.2-linux-x64/3.6/scripts/modules/bpy_extras/view3d_utils.py", line 127, in region_2d_to_location_3d
+    # coord_vec = region_2d_to_vector_3d(region, rv3d, coord)
+    # File "/opt/blender-3.6.2-linux-x64/3.6/scripts/modules/bpy_extras/view3d_utils.py", line 30, in region_2d_to_vector_3d
+    # persinv = rv3d.perspective_matrix.inverted()
+    try:
+        center_3d = region_2d_to_location_3d(context.region, context.region_data, center, depth_location)
+        offset_3d = region_2d_to_location_3d(context.region, context.region_data, offset, depth_location)
+    except:
+        print("exception!")
+        return 1
 
     # draw_point(center_3d, color=(1, 1, 0), modal=False)
     # draw_point(offset_3d, color=(1, 0, 0), modal=False)
@@ -246,7 +356,8 @@ def draw_keymap_items(kc, name, keylist, layout):
                 idx += 1
 
         drawn.append(isdrawn)
-    return drawn
+
+    return any(d for d in drawn)
 
 
 def get_keymap_item(name, idname, key=None, alt=False, ctrl=False, shift=False, properties=[]):

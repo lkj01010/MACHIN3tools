@@ -71,89 +71,11 @@ class RemoveFromCollection(bpy.types.Operator):
 
     def execute(self, context):
 
-        # this op needs to have an active object for some reason, otherwise the collection list will stay empty
+        # this op needs to have an active object, otherwise the collection list will stay empty
         if context.active_object not in context.selected_objects:
             context.view_layer.objects.active = context.selected_objects[0]
 
         bpy.ops.collection.objects_remove('INVOKE_DEFAULT')
-
-        return {'FINISHED'}
-
-
-class AddToCollection(bpy.types.Operator):
-    bl_idname = "machin3.add_to_collection"
-    bl_label = "MACHIN3: Add to Collection"
-    bl_description = "Add Selection to a Collection"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        view = context.space_data
-
-        if view.type == 'VIEW_3D' and context.selected_objects:
-
-            # if in local view, then you have to have the outliner visible, so can't be in fullscreen
-            # this is because for whatever reason we need to override the context for the move_to_collection() op to work in local_view
-            if view.local_view:
-                for area in context.screen.areas:
-                    if area.type == 'OUTLINER':
-                        return True
-            else:
-                return True
-
-    def execute(self, context):
-        view = context.space_data
-
-        # use a context override when in local view
-        if view.local_view:
-            for area in context.screen.areas:
-                if area.type == 'OUTLINER':
-                    override = {'area': area}
-                    break
-
-            bpy.ops.object.link_to_collection(override, 'INVOKE_DEFAULT')
-
-        else:
-            bpy.ops.object.link_to_collection('INVOKE_DEFAULT')
-
-        return {'FINISHED'}
-
-
-class MoveToCollection(bpy.types.Operator):
-    bl_idname = "machin3.move_to_collection"
-    bl_label = "MACHIN3: Move to Collection"
-    bl_description = "Move Selection to a Collection"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        view = context.space_data
-
-        if view.type == 'VIEW_3D' and context.selected_objects:
-
-            # if in local view, then you have to have the outlienr visible, so can't be in fullscreen
-            # this is because for whatever reason we need to override the context for the move_to_collection() op to work in local_view
-            if view.local_view:
-                for area in context.screen.areas:
-                    if area.type == 'OUTLINER':
-                        return True
-            else:
-                return True
-
-    def execute(self, context):
-        view = context.space_data
-
-        # use a context override when in local view
-        if view.local_view:
-            for area in context.screen.areas:
-                if area.type == 'OUTLINER':
-                    override = {'area': area}
-                    break
-
-            bpy.ops.object.move_to_collection(override, 'INVOKE_DEFAULT')
-
-        else:
-            bpy.ops.object.move_to_collection('INVOKE_DEFAULT')
 
         return {'FINISHED'}
 

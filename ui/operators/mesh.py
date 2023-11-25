@@ -4,6 +4,7 @@ import bmesh
 from math import radians
 from ... utils.registration import get_addon
 from ... utils.system import printd
+from ... utils.bmesh import ensure_custom_data_layers
 from ... items import shade_mode_items
 
 
@@ -281,8 +282,7 @@ class Shade(bpy.types.Operator):
         bm.from_mesh(obj.data)
         bm.normal_update()
 
-        bw = bm.edges.layers.bevel_weight.verify()
-        cr = bm.edges.layers.crease.verify()
+        _, bw, cr = ensure_custom_data_layers(bm)
 
         for e in bm.edges:
             if self.clear_sharps:
@@ -306,8 +306,7 @@ class Shade(bpy.types.Operator):
         bm = bmesh.from_edit_mesh(mesh)
         bm.normal_update()
 
-        bw = bm.edges.layers.bevel_weight.verify()
-        cr = bm.edges.layers.crease.verify()
+        _, bw, cr = ensure_custom_data_layers(bm)
 
         # flatten all faces like in object mode
         for f in bm.faces:

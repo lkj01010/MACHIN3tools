@@ -101,11 +101,10 @@ class MaterialPicker(bpy.types.Operator):
     def modal(self, context, event):
         context.area.tag_redraw()
 
-        self.mousepos = Vector((event.mouse_region_x, event.mouse_region_y))
-        self.mousepos_screen = Vector((event.mouse_x, event.mouse_y))
+        self.mouse_pos = Vector((event.mouse_region_x, event.mouse_region_y))
+        self.mouse_pos_window = Vector((event.mouse_x, event.mouse_y))
 
-
-        area_under_mouse = self.get_area_under_mouse(self.mousepos_screen)
+        area_under_mouse = self.get_area_under_mouse(self.mouse_pos_window)
         # print("area under mouse:", area_under_mouse)
 
         # restore mouse eyedropper mouse cursor, and fetch the selected asset from the asset browser
@@ -161,7 +160,7 @@ class MaterialPicker(bpy.types.Operator):
 
                 # fetch material via raycast in pick and assign modes, but not when assigning from the asset browser
                 if not self.assign_from_assetbrowser:
-                    hitobj, matindex = self.get_material_hit(context, self.mousepos, debug=False)
+                    hitobj, matindex = self.get_material_hit(context, self.mouse_pos, debug=False)
 
                     # try to fetch the material from the hit and stroe its name on the op
                     mat, self.pick_material_name = self.get_material_from_hit(hitobj, matindex)
@@ -171,7 +170,7 @@ class MaterialPicker(bpy.types.Operator):
 
             elif event.type == 'LEFTMOUSE' and event.value == 'PRESS':
 
-                hitobj, matindex = self.get_material_hit(context, self.mousepos, debug=False)
+                hitobj, matindex = self.get_material_hit(context, self.mouse_pos, debug=False)
 
                 if hitobj:
 
@@ -316,6 +315,9 @@ class MaterialPicker(bpy.types.Operator):
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
+    
+    # UTILS
+
     def get_areas(self, context):
         '''
         check the active screen and fetch all areas and their position/dimenension
@@ -342,16 +344,16 @@ class MaterialPicker(bpy.types.Operator):
 
         return areas, asset_browser
 
-    def get_area_under_mouse(self, mousepos):
+    def get_area_under_mouse(self, mouse_pos):
         '''
         return name of area, under ther mouse
         '''
 
         for areaname, coords in self.areas.items():
-            if coords['x'][0] <= self.mousepos_screen.x <= coords['x'][1]:
+            if coords['x'][0] <= mouse_pos.x <= coords['x'][1]:
                 # print(" in x of", areaname)
 
-                if coords['y'][0] <= self.mousepos_screen.y <= coords['y'][1]:
+                if coords['y'][0] <= mouse_pos.y <= coords['y'][1]:
                     # print(" in y of", areaname, "too")
                     return areaname
 
@@ -401,23 +403,23 @@ class MaterialPicker(bpy.types.Operator):
 
                     else:
                         msg = f".blend file does not exist: {os.path.join(libpath, blendname)}"
-                        print("WARNING:", msg)
+                        # print("WARNING:", msg)
                         asset = {'error': msg}
 
 
                 else:
                     msg = "No material selected in asset browser!"
-                    print("WARNING:", msg)
+                    # print("WARNING:", msg)
                     asset = {'error': msg}
 
             else:
                 msg = "LOCAL or unsupported library chosen!"
-                print("WARNING:", msg)
+                # print("WARNING:", msg)
                 asset = {'error': msg}
 
         else:
             msg = "There is no asset browser in this workspace"
-            print("WARNING:", msg)
+            # print("WARNING:", msg)
             asset = {'error': msg}
 
 
@@ -435,11 +437,11 @@ class MaterialPicker(bpy.types.Operator):
             print("\nmaterial hitting at", mousepos)
         
         if context.mode == 'OBJECT':
-            hitobj, hitobj_eval, _, _, hitindex, _ = cast_obj_ray_from_mouse(self.mousepos, depsgraph=self.dg, debug=False)
+            hitobj, hitobj_eval, _, _, hitindex, _ = cast_obj_ray_from_mouse(self.mouse_pos, depsgraph=self.dg, debug=False)
 
         elif context.mode == 'EDIT_MESH':
             # hitobj, _, _, hitindex, _, _ = cast_bvh_ray_from_mouse(self.mousepos, candidates=[obj for obj in context.visible_objects if obj.mode == 'EDIT'], debug=False)
-            hitobj, _, _, hitindex, _, _ = cast_bvh_ray_from_mouse(self.mousepos, candidates=[obj for obj in context.visible_objects], debug=False)
+            hitobj, _, _, hitindex, _, _ = cast_bvh_ray_from_mouse(self.mouse_pos, candidates=[obj for obj in context.visible_objects], debug=False)
 
         if hitobj:
 
@@ -512,6 +514,9 @@ class MaterialPicker(bpy.types.Operator):
                 mat.use_fake_user = False
 
         return mat
+
+
+    # ASSIGN
 
     def assign_material_in_editmode(self, context, mat):
         '''

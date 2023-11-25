@@ -281,8 +281,9 @@ def activate(self, register, tool):
             if k not in startup_keymaps:
                 startup_keymaps.append(k)
 
-        if classes:
-            print("Registered MACHIN3tools' %s" % (name))
+        if get_prefs().registration_debug:
+            if classes:
+                print("Registered MACHIN3tools' %s" % (name))
 
         classlist.clear()
         keylist.clear()
@@ -327,8 +328,9 @@ def activate(self, register, tool):
 
         unregister_classes(classes, debug=debug)
 
-        if classes:
-            print("Unregistered MACHIN3tools' %s" % (name))
+        if get_prefs().registration_debug:
+            if classes:
+                print("Unregistered MACHIN3tools' %s" % (name))
 
 
 # GET CORE, TOOLS and PIES - CLASSES and KEYMAPS - for startup registration
@@ -413,6 +415,10 @@ def get_tools():
 
     # GROUP
     classlists, keylists, count = get_group(classlists, keylists, count)
+
+
+    # REGION
+    classlists, keylists, count = get_region(classlists, keylists, count)
 
 
     # THREADS
@@ -658,6 +664,15 @@ def get_group(classlists=[], keylists=[], count=0):
     if get_prefs().activate_group:
         classlists.append(classesdict["GROUP"])
         keylists.append(keysdict["GROUP"])
+        count +=1
+
+    return classlists, keylists, count
+
+
+def get_region(classlists=[], keylists=[], count=0):
+    if get_prefs().activate_region: 
+        classlists.append(classesdict["REGION"])
+        keylists.append(keysdict["REGION"])
         count +=1
 
     return classlists, keylists, count

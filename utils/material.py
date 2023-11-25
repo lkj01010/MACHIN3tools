@@ -1,5 +1,8 @@
 import bpy
+from mathutils import Vector
 from . registration import get_addon
+from . math import get_sca_matrix
+from . mesh import get_bbox
 
 
 decalmachine = None
@@ -94,6 +97,45 @@ def adjust_bevel_shader(context, debug=False):
         
         # collect all visible materials in a set
         visible_mats.update(mats)
+        
+        # set dimensions prop
+        if m3.use_bevel_shader:
+
+            # set dimensions factor based on max dim
+            if m3.bevel_shader_use_dimensions:
+
+                # get dimensions from non-evaluated mesh(as mirror mods massivele change the dims!)
+                if obj.type == 'MESH':
+                    # print(obj.name)
+
+                    # get mesh dimensios as vector
+                    dims = Vector(get_bbox(obj.data)[2])
+
+                    # get scalemx
+                    scalemx = get_sca_matrix(obj.matrix_world.to_scale())
+                    
+                    # get the maxdims by getting the length of the scalemx @ dis vector
+                    maxdim = (scalemx @ dims).length
+                    # print(maxdim)
+                
+                # fall back to obj.dims for non-mesh objects
+                else:
+                    maxdim = max(obj.dimensions)
+
+                if debug:
+                    print(" setting bevel dimensions to:", maxdim)
+
+                obj.M3.bevel_shader_dimensions_mod = maxdim
+
+            # re-set dimensions factor to 1
+            else:
+                if debug:
+                    print(" re-setting bevel dimensions")
+
+                obj.M3.bevel_shader_dimensions_mod = 1
+
+            # this seems to be required, or toggling m3.bevel_shader_use_dimenions won't update the shader effect, unless you toggle in and out of obect mode
+            obj.update_tag()
 
     # print("\nvisible mats:", [mat.name for mat in visible_mats])
 
@@ -108,14 +150,18 @@ def adjust_bevel_shader(context, debug=False):
 
         bevel = tree.nodes.get('Bevel')
         math = tree.nodes.get('Bevel Shader Radius Math')
+        math2 = tree.nodes.get('Bevel Shader Radius Math2')
         global_radius = tree.nodes.get('Bevel Shader Global Radius')
         obj_modulation = tree.nodes.get('Bevel Shader Object Radius Modulation')
+        dim_modulation = tree.nodes.get('Bevel Shader Dimensions Modulation')
 
         if debug:
             print(" bevel:", bevel)
             print(" math:", math)
+            print(" math2:", math2)
             print(" global_radius:", global_radius)
             print(" obj_modulation:", obj_modulation)
+            print(" dim_modulation:", dim_modulation)
 
         # try to create bevel node
         if not bevel:
@@ -144,7 +190,10 @@ def adjust_bevel_shader(context, debug=False):
 
                     bevel.location.y = last_node.location.y - y_dim + bevel.height
 
-                    # create the other 3 nodes too, to facilitate object based radius modulation
+                    # link it to the normal output
+                    tree.links.new(bevel.outputs[0], normal_input)
+
+                    # create first math node
                     if not math:
                         if debug:
                             print("   creating multiply node")
@@ -158,6 +207,21 @@ def adjust_bevel_shader(context, debug=False):
 
                         tree.links.new(math.outputs[0], bevel.inputs[0])
 
+                    # create second math node
+                    if not math2:
+                        if debug:
+                            print("   creating 2nd multiply node")
+
+                        math2 = tree.nodes.new('ShaderNodeMath')
+                        math2.name = "Bevel Shader Radius Math"
+                        math2.operation = 'MULTIPLY'
+
+                        math2.location = math.location
+                        math2.location.x = math.location.x - 200
+
+                        tree.links.new(math2.outputs[0], math.inputs[0])
+
+                    # create global radius value node
                     if not global_radius:
                         if debug:
                             print("   creating global radius node")
@@ -166,12 +230,13 @@ def adjust_bevel_shader(context, debug=False):
                         global_radius.name = "Bevel Shader Global Radius"
                         global_radius.label = "Global Radius"
 
-                        global_radius.location = math.location
-                        global_radius.location.x = math.location.x - 200
-                        global_radius.location.y = math.location.y
+                        global_radius.location = math2.location
+                        global_radius.location.x = math2.location.x - 200
+                        global_radius.location.y = math2.location.y
 
-                        tree.links.new(global_radius.outputs[0], math.inputs[0])
-
+                        tree.links.new(global_radius.outputs[0], math2.inputs[0])
+                    
+                    # create per-object radius modulation node
                     if not obj_modulation:
                         if debug:
                             print("   creating obj modulation node")
@@ -186,10 +251,24 @@ def adjust_bevel_shader(context, debug=False):
                         obj_modulation.location = global_radius.location
                         obj_modulation.location.y = global_radius.location.y - 100
 
-                        tree.links.new(obj_modulation.outputs[2], math.inputs[1])
+                        tree.links.new(obj_modulation.outputs[2], math2.inputs[1])
 
-                    # link it to the normal output
-                    tree.links.new(bevel.outputs[0], normal_input)
+                    # create obj-dimensions radius modulation node
+                    if not dim_modulation:
+                        if debug:
+                            print("   creating dimensions modulation node")
+
+                        dim_modulation = tree.nodes.new('ShaderNodeAttribute')
+                        dim_modulation.name = "Bevel Shader Dimensions Radius Modulation"
+                        dim_modulation.label = "Dimensions Radius Modulation"
+
+                        dim_modulation.attribute_type = 'OBJECT'
+                        dim_modulation.attribute_name = 'M3.bevel_shader_dimensions_mod'
+
+                        dim_modulation.location = math2.location
+                        dim_modulation.location.y = math2.location.y - 175
+
+                        tree.links.new(dim_modulation.outputs[2], math.inputs[1])
 
                 # couldn't find a normal input, moving on to the next material
                 else:
@@ -219,7 +298,6 @@ def adjust_bevel_shader(context, debug=False):
 
                 # then set it on the global radius value node
                 global_radius.outputs[0].default_value = m3.bevel_shader_radius
-
 
         # remove bevel nodes and white bevel mat
         else:
@@ -257,3 +335,11 @@ def adjust_bevel_shader(context, debug=False):
                         print(" removing obj modulation node")
 
                     tree.nodes.remove(obj_modulation)
+
+                if dim_modulation:
+                    if debug:
+                        print(" removing dim modulation node")
+
+                    tree.nodes.remove(dim_modulation)
+
+

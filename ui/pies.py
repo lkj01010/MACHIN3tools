@@ -28,6 +28,8 @@ hypercursorlast = None
 wavefront_addon = None
 
 
+# MODES
+
 class PieModes(Menu):
     bl_idname = "MACHIN3_MT_modes_pie"
     bl_label = "Modes"
@@ -718,6 +720,8 @@ class PieModes(Menu):
         r.operator("object.mode_set", text="", icon="OBJECT_DATA").mode = 'OBJECT'
 
 
+# SAVE
+
 class PieSave(Menu):
     bl_idname = "MACHIN3_MT_save_pie"
     bl_label = "Save, Open, Append"
@@ -811,7 +815,7 @@ class PieSave(Menu):
         global wavefront_addon
 
         # check if wavefront addon is used, or if the new native, but experimental exporter is used
-        if wavefront_addon is None:
+        if bpy.app.version <= (4, 0, 0) and wavefront_addon is None:
             wavefront_addon = get_addon('Wavefront OBJ format')[0]
 
         column = layout.column(align=True)
@@ -886,6 +890,20 @@ class PieSave(Menu):
             op = r.operator("wm.usd_export", text="Export", icon_value=get_icon('export'))
             op.selected_objects_only = True if context.selected_objects else False
 
+
+        #  .stl
+
+        if get_prefs().save_pie_show_stl_export:
+            row = column.split(factor=0.25, align=True)
+            row.label(text="STL")
+            r = row.row(align=True)
+            r.operator("import_mesh.stl", text="Import", icon_value=get_icon('import'))
+
+            op = r.operator("export_mesh.stl", text="Export", icon_value=get_icon('export'))
+            op.use_selection = True if context.selected_objects else False
+
+
+
     def draw_center_column_bottom(self, layout, is_in_temp_dir=False):
         column = layout.column(align=True)
 
@@ -922,6 +940,8 @@ class PieSave(Menu):
         column.separator()
         column.operator("machin3.clean_out_blend_file", text="Clean out .blend", icon_value=get_icon('error'))
 
+
+# SHADING
 
 class PieShading(Menu):
     bl_idname = "MACHIN3_MT_shading_pie"
@@ -1604,18 +1624,20 @@ class PieShading(Menu):
 
             column = layout.column(align=True)
 
-            row = column.row(align=True)
-            row.prop(m3, 'use_bevel_shader')
+            split = column.split(factor=0.4, align=True)
+            split.prop(m3, 'use_bevel_shader')
 
-            r = row.row(align=True)
-            r.active = m3.use_bevel_shader
-            r.prop(m3, 'bevel_shader_samples')
-            r.prop(m3, 'bevel_shader_radius')
+            row = split.row(align=True)
+            row.active = m3.use_bevel_shader
+            row.prop(m3, 'bevel_shader_use_dimensions', text="", icon='FULLSCREEN_ENTER')
+            row.prop(m3, 'bevel_shader_samples')
+            row.prop(m3, 'bevel_shader_radius')
 
             if active:
                 row = column.row(align=True)
                 row.active = m3.use_bevel_shader
-                row.prop(active.M3, 'bevel_shader_radius_mod')
+                row.prop(active.M3, 'bevel_shader_radius_mod', text="Active Object Factor")
+
 
     def draw_light_adjust_box(self, context, m3, layout):
         column = layout.column(align=True)
@@ -1646,6 +1668,8 @@ class PieShading(Menu):
 
         return text, icon
 
+
+# VIEWPORT
 
 class PieViewport(Menu):
     bl_idname = "MACHIN3_MT_viewport_pie"
@@ -1790,6 +1814,8 @@ class PieViewport(Menu):
 
         column.operator("machin3.reset_viewport", text='Reset Viewport')
 
+
+# ALIGN
 
 class PieAlign(Menu):
     bl_idname = "MACHIN3_MT_align_pie"
@@ -2189,6 +2215,8 @@ class PieUVAlign(Menu):
         op.axis = "V"
 
 
+# CURSOR and ORIGIN
+
 class PieCursor(Menu):
     bl_idname = "MACHIN3_MT_cursor_pie"
     bl_label = "Cursor and Origin"
@@ -2238,8 +2266,8 @@ class PieCursor(Menu):
 
                 row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
-                row.operator("machin3.origin_to_cursor", text="to Cursor", icon="LAYER_ACTIVE")
                 row.operator("object.origin_set", text="to Geometry", icon="MESH_DATA").type = "ORIGIN_GEOMETRY"
+                row.operator("machin3.origin_to_cursor", text="to Cursor", icon="LAYER_ACTIVE")
 
                 row = column.split(factor=0.5, align=True)
                 row.scale_y = 1.5
@@ -2259,8 +2287,8 @@ class PieCursor(Menu):
 
                     row = column.row(align=True)
                     row.scale_y = 1.5
-                    row.operator("machin3.origin_to_cursor", text="to Cursor", icon='LAYER_ACTIVE')
                     row.operator("machin3.origin_to_active", text="to %s" % (sel), icon=icon)
+                    row.operator("machin3.origin_to_cursor", text="to Cursor", icon='LAYER_ACTIVE')
 
                 else:
 
@@ -2297,6 +2325,8 @@ class PieCursor(Menu):
         else:
             pie.separator()
 
+
+# TRANSFORM
 
 class PieTransform(Menu):
     bl_idname = "MACHIN3_MT_transform_pie"
@@ -2435,6 +2465,9 @@ class PieTransform(Menu):
             row.prop(active.data, "use_mirror_topology", toggle=True)
 
 
+# SNAPPING
+
+
 class PieSnapping(Menu):
     bl_idname = "MACHIN3_MT_snapping_pie"
     bl_label = "Snapping"
@@ -2546,6 +2579,8 @@ class PieSnapping(Menu):
             row.prop(tool_settings, 'use_snap_align_rotation')
 
 
+# COLLECTIONS
+
 class PieCollections(Menu):
     bl_idname = "MACHIN3_MT_collections_pie"
     bl_label = "Collections"
@@ -2580,7 +2615,6 @@ class PieCollections(Menu):
             dcol = bpy.data.collections.get(decalsname)
 
 
-
         layout = self.layout
         pie = layout.menu_pie()
 
@@ -2593,7 +2627,7 @@ class PieCollections(Menu):
 
         # 6 - RIGHT
         if sel:
-            pie.operator("machin3.add_to_collection", text="Add to", icon="ADD")
+            pie.operator("object.link_to_collection", text="Add to", icon="ADD")
 
         else:
             pie.separator()
@@ -2601,7 +2635,7 @@ class PieCollections(Menu):
 
         # 2 - BOTTOM
         if sel:
-            pie.operator("machin3.move_to_collection", text="Move to")
+            pie.operator("object.move_to_collection", text="Move to", icon="ADD")
 
         else:
             pie.operator("machin3.create_collection", text="Create", icon="GROUP")
@@ -2888,6 +2922,8 @@ class PieCollections(Menu):
             row.label(text="Info")
 
 
+# WORKSPACE
+
 class PieWorkspace(Menu):
     bl_idname = "MACHIN3_MT_workspace_pie"
     bl_label = "Workspaces"
@@ -2910,6 +2946,8 @@ class PieWorkspace(Menu):
             else:
                 pie.separator()
 
+
+# TOOLS
 
 class PieTools(Menu):
     bl_idname = "MACHIN3_MT_tools_pie"
